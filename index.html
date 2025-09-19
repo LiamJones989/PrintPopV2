@@ -1,0 +1,295 @@
+// Project: Custom-Tee-Website (Vite + React + Tailwind)
+// Files included below. Copy into a new Vite React project or follow README steps.
+
+/* ===== package.json ===== */
+{
+  "name": "custom-tee-website",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "gh-pages": "^5.0.0",
+    "autoprefixer": "^10.4.14",
+    "postcss": "^8.4.24",
+    "tailwindcss": "^3.4.7",
+    "vite": "^5.0.0"
+  }
+}
+
+
+/* ===== vite.config.js ===== */
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+// If you plan to deploy to GitHub Pages at https://<user>.github.io/<repo>/
+// set base to '/<repo>/' before building. README includes steps.
+export default defineConfig({
+  plugins: [react()]
+})
+
+
+/* ===== tailwind.config.cjs ===== */
+module.exports = {
+  content: ['./index.html', './src/**/*.{js,jsx,ts,tsx}'],
+  theme: { extend: {} },
+  plugins: []
+}
+
+
+/* ===== index.html ===== */
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Custom Tee — Shop</title>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
+
+
+/* ===== src/main.jsx ===== */
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+import App from './App'
+import './index.css'
+
+createRoot(document.getElementById('root')).render(
+  <React.StrictMode>
+    <App />
+  </React.StrictMode>
+)
+
+
+/* ===== src/index.css ===== */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; }
+
+
+/* ===== src/App.jsx ===== */
+import React, { useState, useEffect } from 'react'
+
+const SAMPLE_PRODUCTS = [
+  {
+    id: 'classic-white',
+    name: 'Classic White Tee',
+    price: 18,
+    colors: ['White', 'Black', 'Heather'],
+    img: 'https://via.placeholder.com/360x360?text=Classic+White'
+  },
+  {
+    id: 'bold-logo',
+    name: 'Bold Logo Tee',
+    price: 22,
+    colors: ['Black', 'Navy', 'Red'],
+    img: 'https://via.placeholder.com/360x360?text=Bold+Logo'
+  },
+  {
+    id: 'vintage-tee',
+    name: 'Vintage Tee',
+    price: 25,
+    colors: ['Sand', 'Olive', 'Burgundy'],
+    img: 'https://via.placeholder.com/360x360?text=Vintage'
+  }
+]
+
+export default function App () {
+  const [products] = useState(SAMPLE_PRODUCTS)
+  const [cart, setCart] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('ct_cart') || '[]') } catch { return [] }
+  })
+  const [view, setView] = useState('shop') // 'shop' | 'cart' | 'checkout' | 'thanks'
+
+  useEffect(() => { localStorage.setItem('ct_cart', JSON.stringify(cart)) }, [cart])
+
+  function addToCart(product, color, qty = 1) {
+    setCart(prev => {
+      const existing = prev.find(p => p.id === product.id && p.color === color)
+      if (existing) return prev.map(p => p.id === product.id && p.color === color ? { ...p, qty: p.qty + qty } : p)
+      return [...prev, { id: product.id, name: product.name, price: product.price, color, qty }]
+    })
+  }
+
+  function updateQty(index, qty) {
+    setCart(prev => prev.map((p, i) => i === index ? { ...p, qty } : p))
+  }
+
+  function removeItem(index) {
+    setCart(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const subtotal = cart.reduce((s, p) => s + p.price * p.qty, 0)
+  const shipping = subtotal > 50 || subtotal === 0 ? 0 : 6
+  const total = subtotal + shipping
+
+  return (
+    <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
+      <header className="bg-white shadow">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <h1 className="text-2xl font-bold">Custom Tee</h1>
+          <nav className="flex gap-2 items-center">
+            <button onClick={() => setView('shop')} className="py-1 px-3 rounded hover:bg-gray-100">Shop</button>
+            <button onClick={() => setView('cart')} className="py-1 px-3 rounded hover:bg-gray-100">Cart ({cart.reduce((a,c)=>a+c.qty,0)})</button>
+          </nav>
+        </div>
+      </header>
+
+      <main className="max-w-6xl mx-auto p-6">
+        {view === 'shop' && (
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Our Tees</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+              {products.map(prod => (
+                <ProductCard key={prod.id} product={prod} addToCart={addToCart} />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {view === 'cart' && (
+          <section>
+            <h2 className="text-xl font-semibold mb-4">Your Cart</h2>
+            {cart.length === 0 ? (
+              <div className="p-6 bg-white rounded shadow text-center">Your cart is empty. <button onClick={() => setView('shop')} className="ml-2 underline">Keep shopping</button></div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2 bg-white p-4 rounded shadow">
+                  {cart.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-4 border-b py-3">
+                      <div className="w-20 h-20 bg-gray-100 flex items-center justify-center rounded">{item.name.split(' ')[0]}</div>
+                      <div className="flex-1">
+                        <div className="font-medium">{item.name}</div>
+                        <div className="text-sm text-gray-600">Color: {item.color}</div>
+                        <div className="text-sm">${item.price} each</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input type="number" min="1" value={item.qty} onChange={e => updateQty(idx, Number(e.target.value) || 1)} className="w-16 p-1 border rounded" />
+                        <button onClick={() => removeItem(idx)} className="text-sm underline">Remove</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <aside className="bg-white p-4 rounded shadow">
+                  <div className="mb-2">Subtotal: ${subtotal.toFixed(2)}</div>
+                  <div className="mb-2">Shipping: ${shipping.toFixed(2)}</div>
+                  <div className="font-semibold text-lg mb-4">Total: ${total.toFixed(2)}</div>
+                  <button onClick={() => setView('checkout')} className="w-full py-2 rounded bg-black text-white">Checkout (Mock)</button>
+                </aside>
+              </div>
+            )}
+          </section>
+        )}
+
+        {view === 'checkout' && (
+          <section className="max-w-2xl mx-auto bg-white p-6 rounded shadow">
+            <h2 className="text-xl font-semibold mb-4">Checkout (Mock)</h2>
+            <p className="text-sm text-gray-600 mb-4">This demo doesn't process real payments. Use this page to collect shipping info or integrate Stripe later.</p>
+            <form onSubmit={(e) => { e.preventDefault(); setView('thanks'); }} className="grid grid-cols-1 gap-3">
+              <input required placeholder="Full name" className="p-2 border rounded" />
+              <input required placeholder="Email" className="p-2 border rounded" type="email" />
+              <input required placeholder="Address" className="p-2 border rounded" />
+              <div className="flex gap-2">
+                <input required placeholder="City" className="p-2 border rounded flex-1" />
+                <input required placeholder="ZIP" className="p-2 border rounded w-28" />
+              </div>
+              <button type="submit" className="py-2 rounded bg-black text-white">Place Order</button>
+            </form>
+          </section>
+        )}
+
+        {view === 'thanks' && (
+          <section className="max-w-2xl mx-auto bg-white p-6 rounded shadow text-center">
+            <h2 className="text-xl font-semibold mb-2">Thanks — order placed!</h2>
+            <p className="text-sm text-gray-600 mb-4">This is a demo flow. Integrate a payment gateway and order backend for a real shop.</p>
+            <button onClick={() => { setCart([]); setView('shop') }} className="py-2 px-4 rounded bg-black text-white">Back to shop</button>
+          </section>
+        )}
+      </main>
+
+      <footer className="text-center text-sm text-gray-500 py-6">© Custom Tee — Demo</footer>
+    </div>
+  )
+}
+
+function ProductCard({ product, addToCart }) {
+  const [color, setColor] = useState(product.colors[0])
+  const [qty, setQty] = useState(1)
+  return (
+    <div className="bg-white rounded shadow p-4 flex flex-col">
+      <img src={product.img} alt={product.name} className="rounded mb-3 w-full h-48 object-cover" />
+      <div className="flex-1">
+        <div className="font-semibold">{product.name}</div>
+        <div className="text-sm text-gray-600 mb-2">${product.price.toFixed(2)}</div>
+        <select value={color} onChange={e => setColor(e.target.value)} className="p-2 border rounded w-full mb-2">
+          {product.colors.map(c => <option key={c} value={c}>{c}</option>)}
+        </select>
+        <div className="flex gap-2">
+          <input type="number" min="1" value={qty} onChange={e => setQty(Number(e.target.value) || 1)} className="w-20 p-2 border rounded" />
+          <button onClick={() => addToCart(product, color, qty)} className="flex-1 py-2 rounded bg-black text-white">Add to cart</button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+
+/* ===== README.md ===== */
+# Custom-Tee-Website (Demo)
+
+This is a single-page demo of a custom t-shirt store built with React + Vite + Tailwind. It includes a product gallery, client-side cart persisted to localStorage, and a mock checkout page.
+
+## What you get in this repo
+- `src/App.jsx` — the single-file app UI and logic (demo-ready)
+- `src/main.jsx`, `index.html`, and `src/index.css` (Tailwind)
+- `package.json` scripts to run, build, and deploy
+
+## Run locally (quick)
+1. Make sure Node.js (v18+) and npm are installed.
+2. Create the project folder and copy the files above into the structure.
+3. In the project root run:
+
+```bash
+npm install
+npm run dev
+```
+
+Open `http://localhost:5173` (or the URL printed by Vite).
+
+## Build and deploy to GitHub Pages
+Option A — Manual (recommended for simplicity)
+1. Create a public GitHub repository and push your project.
+2. Build: `npm run build` (creates `dist/`).
+3. In your repo, go to Settings → Pages and choose the `dist/` folder from the `main` branch (GitHub UI may label this as `gh-pages` or "Deploy from a branch").
+
+Option B — gh-pages package
+1. Install gh-pages: `npm install --save-dev gh-pages` (already added in `devDependencies`).
+2. Add `homepage` to `package.json`: `"homepage": "https://<your-username>.github.io/<your-repo>"`.
+3. Run `npm run build` then `npm run deploy`.
+
+## Next steps / Customization ideas
+- Replace placeholder images with your product photos.
+- Add a proper backend (Firebase, Supabase, or your own) for orders.
+- Integrate Stripe for real payments.
+- Add product customization (upload designs, text input, preview).
+- Add sizes and inventory tracking.
+
+## Need help?
+Tell me what you want changed (logo, product names, colors, sizes, or Stripe integration) and I'll update the code.
+
+
+/* End of project files */
